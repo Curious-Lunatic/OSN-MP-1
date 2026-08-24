@@ -11,4 +11,6 @@
 #include<pwd.h>
 #define maxinput 1024 // given 
 void printing(const char* shome);
+int parsing(token *tokens, int count);
+
 #endif

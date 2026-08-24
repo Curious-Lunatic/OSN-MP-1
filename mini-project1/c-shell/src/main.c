@@ -1,4 +1,6 @@
 #include "../include/shell.h" // get our shit
+#include "../include/lexer.h"
+#define maxtok 256
 int main(){
     char shome[5000];
     char input[maxinput]; // given 
@@ -19,6 +21,21 @@ int main(){
         if(strlen(input)==0){
             continue;
         }
+    token tokens[maxtok];
+    int token_count=0;
+        if(!maketoken(input, tokens, &token_count)){
+            continue; 
+        }
+        if(!parsing(tokens, token_count)){
+            continue;   // parser already printed "cshell: invalid syntax"
+        }
+        for(int i=0; i<token_count; i++){
+            if(tokens[i].type == token_word)
+                printf("WORD(%s) ", tokens[i].value);
+            else
+                printf("OP(%d) ", tokens[i].type);
+        }
+        printf("\n");
     }
 return 0;
 }

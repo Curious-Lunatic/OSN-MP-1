@@ -5,7 +5,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
         int state = 0; // for the grammer
         char word[1024]; // max given
         int index = 0;
-    
+        int content=0; // to see no empty things go 
     for(int i=0; input[i]!='\0'; i++){
         char c = input[i]; // go char by char
         if (state==0){
@@ -17,10 +17,16 @@ int maketoken(char *input, token *tokens, int *tok_count){
             i++;
             word[index++] = input[i];
             }
-        else if(c=='\'') state = 1;
-        else if(c=='"') state = 2;
-        else if (c=='\n' || c=='\t' || c==' '){
-            if(index>0){
+        else if(c=='\'') {    
+        state = 1;
+        content=1;
+        }
+        else if(c=='"'){
+        state = 1;
+        content=1;        
+        }
+        else if (c=='\n' || c=='\t' || c==' ' || c=='\r'){
+            if(content){
                 word[index] = '\0';
                 tokens[*tok_count].type = token_word;
                 strcpy(tokens[*tok_count].value, word);
@@ -29,7 +35,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
             }
         }
         else if (c=='|' || c=='&' || c==';' || c=='<' || c=='>'){
-            if(index>0){
+            if(content){
                 word[index] = '\0';
                 tokens[*tok_count].type = token_word;
                 strcpy(tokens[*tok_count].value, word);
@@ -48,22 +54,30 @@ int maketoken(char *input, token *tokens, int *tok_count){
         }
         else{
             word[index++]=c;
+            content=1;
         }
     }
         else if (state==1){
             if (c=='\'') state = 0;
-            else word[index++]=c;
+            else {
+                word[index++]=c;
+                content=1;
+            }
         }
         else if (state==2){
             if (c=='\\' && (input[i+1]=='"' || input[i+1]=='\\')){
                 i++;
                 word[index++] = input[i];
+                content=1;
             }
             else if (c =='"') state =0;
-            else word[index++] = c;
+            else {
+                word[index++] = c;
+                content=1;
+            }
             }
         }
-     if(index>0){
+     if(content){
                 word[index] = '\0';
                 tokens[*tok_count].type = token_word;
                 strcpy(tokens[*tok_count].value, word);

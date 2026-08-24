@@ -18,4 +18,5 @@ typedef struct token
     char value[5000];
 }token;
 int maketoken(char *input, token *token, int *tok_count);
+int parsing(token *tokens, int count);
 #endif
