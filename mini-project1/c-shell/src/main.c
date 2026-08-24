@@ -29,13 +29,6 @@ int main(){
         if(!parsing(tokens, token_count)){
             continue;   // parser already printed "cshell: invalid syntax"
         }
-        for(int i=0; i<token_count; i++){
-            if(tokens[i].type == token_word)
-                printf("WORD(%s) ", tokens[i].value);
-            else
-                printf("OP(%d) ", tokens[i].type);
-        }
-        printf("\n");
     }
 return 0;
 }

@@ -1,5 +1,5 @@
-#include"include/shell.h"
-#include"include/lexer.h"
+#include"../include/shell.h"
+#include"../include/lexer.h"
 int parsing(token *tokens, int count){
     if(count==0)return 1;
     int state=0;

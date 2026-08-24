@@ -22,7 +22,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
         content=1;
         }
         else if(c=='"'){
-        state = 1;
+        state = 2; // check
         content=1;        
         }
         else if (c=='\n' || c=='\t' || c==' ' || c=='\r'){
@@ -32,6 +32,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
                 strcpy(tokens[*tok_count].value, word);
                 (*tok_count)++;
                 index=0;
+                content=0;
             }
         }
         else if (c=='|' || c=='&' || c==';' || c=='<' || c=='>'){
@@ -41,6 +42,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
                 strcpy(tokens[*tok_count].value, word);
                 (*tok_count)++;
                 index=0;
+                content=0;
             }
         if (c=='>' && input[i+1] == '>'){
             tokens[(*tok_count)++].type = token_gtgt; // >>
@@ -83,6 +85,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
                 strcpy(tokens[*tok_count].value, word);
                 (*tok_count)++;
                 index=0;
+                content=0;
             }
     if(state!=0){
         printf("cshell: invalid syntax\n");

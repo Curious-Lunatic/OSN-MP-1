@@ -1,4 +1,4 @@
-#include "include/shell.h"
+#include "../include/shell.h"
 char previous[5000] ="";
 int hopping(char **args, int acount, const char *shome){
     char cwd[5000];

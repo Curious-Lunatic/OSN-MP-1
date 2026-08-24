@@ -1,4 +1,4 @@
-#include "include/shell.h"
+#include "../include/shell.h"
 void revealing(char *path, int hidden){
     DIR *directory = opendir(path);
     if(!directory){
