@@ -11,7 +11,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
         if (state==0){
             if (c=='\\'){
                 if(input[i+1]=='\0'){
-                    printf("cshell: invalid syntax"); // given if there is an invalid command
+                    printf("cshell: invalid syntax\n"); // given if there is an invalid command
                     return 0;
                 }
             i++;
@@ -37,14 +37,14 @@ int maketoken(char *input, token *tokens, int *tok_count){
                 index=0;
             }
         if (c=='>' && input[i+1] == '>'){
-            tokens[*tok_count].type = token_gtgt; // >>
+            tokens[(*tok_count)++].type = token_gtgt; // >>
             i++;
         }
-        else if (c=='>') tokens[*tok_count++].type = token_gt;
-        else if (c=='<') tokens[*tok_count++].type = token_lt;
-        else if (c=='|') tokens[*tok_count++].type = token_pipe;
-        else if (c=='&') tokens[*tok_count++].type = token_amp;
-        else if (c==';') tokens[*tok_count++].type = token_semi;
+        else if (c=='>') tokens[(*tok_count)++].type = token_gt;
+        else if (c=='<') tokens[(*tok_count)++].type = token_lt;
+        else if (c=='|') tokens[(*tok_count)++].type = token_pipe;
+        else if (c=='&') tokens[(*tok_count)++].type = token_amp;
+        else if (c==';') tokens[(*tok_count)++].type = token_semi;
         }
         else{
             word[index++]=c;

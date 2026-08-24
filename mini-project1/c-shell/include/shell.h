@@ -1,5 +1,6 @@
 #ifndef shell_h
 #define shell_h
+#include<dirent.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
