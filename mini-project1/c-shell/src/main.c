@@ -1,13 +1,8 @@
 #include "../include/shell.h" // get our shit
 #include "../include/lexer.h" // get our other shit
-#include <string.h>
-#include <stdio.h>
-
 #define maxtok 256
 #define maxerinput 5000 
-
 extern char previous[5000]; 
-
 int main() {
     char shome[5000];
     char input[maxerinput]; 
