@@ -2,14 +2,14 @@
 char previous[5000] ="";
 void freq_update(const char* shome, const char *path){
     char file_path[5000];
-    snprintf(file_path, sizeof(file_path), "%s/.frequency", shome);
+    snprintf(file_path, sizeof(file_path), "%s/.frecency", shome); 
     FILE *f = fopen(file_path,"r");
     char lines[1024][5000];
-    long freqs[1024];
+    int freqs[1024]; 
     long times[1024];
-    int count=0, found=0;
+    int count = 0, found = 0;
     if (f) {
-        while (fscanf(f, "%4999s %ld %ld", lines[count], &freqs[count], &times[count]) == 3) {
+        while (fscanf(f, "%4999s %d %ld", lines[count], &freqs[count], &times[count]) == 3) {
             if (strcmp(lines[count], path) == 0) {
                 freqs[count]++;
                 times[count] = (long)time(NULL);
@@ -28,13 +28,13 @@ void freq_update(const char* shome, const char *path){
     f = fopen(file_path, "w");
     if (f) {
         for (int i = 0; i < count; i++) {
-            fprintf(f, "%s %ld %ld\n", lines[i], freqs[i], times[i]);
+            fprintf(f, "%s %d %ld\n", lines[i], freqs[i], times[i]);
         }
         fclose(f);
     }
 }
 char* get_frecency(const char* shome, const char *target){
-    char file_path[5000];
+char file_path[5000];
     snprintf(file_path, sizeof(file_path), "%s/.frecency", shome);
     FILE *f = fopen(file_path, "r");
     if (!f) return NULL;
@@ -43,8 +43,8 @@ char* get_frecency(const char* shome, const char *target){
     int best_freq = -1;
     long best_time = -1;
     char path[5000];
-    int freq;
-    long t;
+    int freq; 
+    long t;   
     while (fscanf(f, "%4999s %d %ld", path, &freq, &t) == 3) {
         if (strstr(path, target) != NULL) {
             struct stat statbuf;
@@ -62,27 +62,28 @@ char* get_frecency(const char* shome, const char *target){
     return NULL;
 }
 int hopping(char **args, int acount, const char *shome){
-    char cwd[5000];
-    char target[4096];
-    if(acount==0){
+char cwd[5000];
+    char target[5000]; 
+    if(acount == 0){
         args = (char*[]){"~"};
-        acount=1;
+        acount = 1;
     }
-    for(int i=0; i<acount; i++){
-        getcwd(cwd,sizeof(cwd));
-        if (strcmp(args[i],"~")==0){
+    for(int i = 0; i < acount; i++){
+        getcwd(cwd, sizeof(cwd));
+        
+        if (strcmp(args[i], "~") == 0){
             strcpy(target, shome);
         }
-        else if (strcmp(args[i], "-")==0){
-            if(strlen(previous)==0) {
+        else if (strcmp(args[i], "-") == 0){
+            if(strlen(previous) == 0) {
                 printf("hop: no such directory\n");
                 continue;
+            }
+            strcpy(target, previous);
         }
-        strcpy(target, previous);
-    }
-    else if (strcmp(args[i], ".") == 0){
-                continue;
-    }
+        else if (strcmp(args[i], ".") == 0){
+            continue; 
+        }
         else{
             strcpy(target, args[i]);
             struct stat statbuffer;
@@ -96,12 +97,17 @@ int hopping(char **args, int acount, const char *shome){
                 }
             }
         }
-        if (chdir(target)==0){
-            strcpy(previous,cwd);
+        
+        if (chdir(target) == 0){
+            strcpy(previous, cwd);
+            char resolved[5000];
+            if (realpath(target, resolved) != NULL) {
+                freq_update(shome, resolved); 
+            }
         }
         else{
             perror("hop");
-            return 0;
+            continue; 
         }
     }
 return 1;
