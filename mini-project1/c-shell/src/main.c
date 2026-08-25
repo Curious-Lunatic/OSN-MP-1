@@ -4,13 +4,13 @@
 #include <stdio.h>
 
 #define maxtok 256
-#define maxinput 5000 
+#define maxerinput 5000 
 
 extern char previous[5000]; 
 
 int main() {
     char shome[5000];
-    char input[maxinput]; 
+    char input[maxerinput]; 
     
     if (getcwd(shome, sizeof(shome)) == NULL) {
         return 1; 

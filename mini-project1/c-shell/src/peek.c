@@ -4,7 +4,7 @@ void peeking(char **args, int acount){
     int rflag=0;
     char target[5000] = "";
     int target_set = 0;
-    for(int i=0; i,acount; i++){
+    for(int i=0; i<acount; i++){
         if(args[i][0]=='-' && strlen(args[i])>1 && !target_set){
             for(size_t j = 1; j<strlen(args[i]); j++){
                 if(args[i][j]=='n') nflag=1;

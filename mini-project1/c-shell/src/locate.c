@@ -18,7 +18,7 @@ void searching(const char* dir_path, const char* target){
         }
         struct stat statbuf;
         if (stat(full_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-            search_directory(full_path, target);
+            searching(full_path, target);
         }
     }
     closedir(dir);
@@ -31,6 +31,6 @@ void locating(char **args, int acount){
     }
     char cwd[5000];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        search_directory(cwd, args[0]);
+        searching(cwd, args[0]);
 }
 }
