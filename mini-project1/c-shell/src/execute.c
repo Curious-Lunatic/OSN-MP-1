@@ -175,7 +175,7 @@ void executing(token *tokens, int tok_count, const char *shome){
                 const char *stripped;
                 char *path = resolving(pipeline[i].argv[0], &stripped);
                 if(!path){
-                    fprintf("cshell: command not found (%s)\n", stripped);
+                    printf("cshell: command not found (%s)\n", stripped);
                     exit(127);
                 }
                 execv(path, pipeline[i].argv);
