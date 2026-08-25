@@ -34,7 +34,7 @@ void reveal_dir(const char *path, const char *prefix, int hidden, int rec) {
         }
 
         struct stat statbuf;
-        int is_dir = (stat(full_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode));
+        int is_dir = (lstat(full_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode));
         
         if (is_dir && rec) {
             printf("%s/\n", quoted_name);

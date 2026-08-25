@@ -16,6 +16,7 @@ int maketoken(char *input, token *tokens, int *tok_count){
                 }
             i++;
             word[index++] = input[i];
+            content=1;
             }
         else if(c=='\'') {    
         state = 1;

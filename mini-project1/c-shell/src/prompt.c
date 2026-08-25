@@ -18,7 +18,7 @@ void printing(const char *shome){
     }
     size_t homelength = strlen(shome); // using an unsigned integar [typo] to find the size oof the shell's directoryu
     if(strncmp(cwd, shome, homelength) ==0 && (cwd[homelength]=='\0' || cwd[homelength] == '/')){
-        printf("<%s@%s>:~%s ", username, hostname, cwd+homelength); // not a string dumbass [ai ts ;-;]
+        printf("<%s@%s:~%s> ", username, hostname, cwd+homelength); // not a string dumbass [ai ts ;-;]
     }
     else{
       printf("<%s@%s:%s> ", username, hostname, cwd);

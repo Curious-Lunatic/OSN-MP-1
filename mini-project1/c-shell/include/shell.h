@@ -34,5 +34,5 @@ typedef struct{
     } out_files[20];
     int outcount;
 } commands;
-char* resolving(const char *name);
+char* resolving(const char *name, const char **stripped);
 #endif

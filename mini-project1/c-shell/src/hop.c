@@ -93,7 +93,7 @@ char cwd[5000];
                     strcpy(target, frec_path);
                 } else {
                     printf("hop: no such directory\n");
-                    continue;
+                    break;
                 }
             }
         }
