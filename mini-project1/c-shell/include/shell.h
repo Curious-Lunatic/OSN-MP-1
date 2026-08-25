@@ -32,6 +32,7 @@ typedef struct{
         char *file;
         int append;
     } out_files[20];
+    int outcount;
 } commands;
 char* resolving(const char *name);
 #endif
