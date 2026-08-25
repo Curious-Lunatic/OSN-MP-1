@@ -42,7 +42,7 @@
                 struct stat statbuf;
                 if (stat(full_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
                     printf("\n");
-                    reveal_directory(full_path, hidden, rec);
+                    reveal_dir(full_path, hidden, rec);
                 }
             }
         }

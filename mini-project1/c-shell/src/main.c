@@ -3,11 +3,11 @@
 #include <string.h>
 #include <stdio.h>
 #define maxtok 256
-#define maxinput 5000
+#define maxerinput 5000
 extern char previous[5000]; 
 int main() {
     char shome[5000];
-    char input[maxinput]; // given 
+    char input[maxerinput]; // given 
     
     if (getcwd(shome, sizeof(shome)) == NULL) {
         return 1; // bail out if we can't get home

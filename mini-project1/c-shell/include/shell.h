@@ -15,4 +15,7 @@
 #include<pwd.h>
 #define maxinput 1024 // given 
 void printing(const char* shome);
+void printing(const char *shome);
+int hopping(char **args, int acount, const char *shome);
+void revealing(char **args, int acount, const char *shome, const char *previous);
 #endif

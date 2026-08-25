@@ -9,7 +9,7 @@ void freq_update(const char* shome, const char *path){
     long times[1024];
     int count=0, found=0;
     if (f) {
-        while (fscanf(f, "%4999s %d %ld", lines[count], &freqs[count], &times[count]) == 3) {
+        while (fscanf(f, "%4999s %ld %ld", lines[count], &freqs[count], &times[count]) == 3) {
             if (strcmp(lines[count], path) == 0) {
                 freqs[count]++;
                 times[count] = (long)time(NULL);
@@ -28,7 +28,7 @@ void freq_update(const char* shome, const char *path){
     f = fopen(file_path, "w");
     if (f) {
         for (int i = 0; i < count; i++) {
-            fprintf(f, "%s %d %ld\n", lines[i], freqs[i], times[i]);
+            fprintf(f, "%s %ld %ld\n", lines[i], freqs[i], times[i]);
         }
         fclose(f);
     }
