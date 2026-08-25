@@ -1,6 +1,7 @@
 #ifndef shell_h
 #define shell_h
 #include<dirent.h>
+#include<fcntl.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -18,4 +19,6 @@ void printing(const char* shome);
 void printing(const char *shome);
 int hopping(char **args, int acount, const char *shome);
 void revealing(char **args, int acount, const char *shome, const char *previous);
+void peeking(char **args, int acount);
+void locating(char **args, int acount);
 #endif
