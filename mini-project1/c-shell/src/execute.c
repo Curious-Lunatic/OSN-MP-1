@@ -194,3 +194,216 @@ void executing(token *tokens, int tok_count, const char *shome){
     }
     flush_output(&octx);
 }
+
+typedef enum{
+    TERM_SEMI, TERM_AMP, TERM_END
+} terminator;
+
+typedef struct{
+    commands pipeline[100];
+    int stage_count;
+    terminator term;
+} segment;
+
+static int presolve(commands *pipeline, int stage_count, char resolved[][5000], const char* stripped[]){
+    for (int i=0; i<stage_count; i++){
+        if(pipeline[i].argcount == 0 ) continue;
+        if(is_builtin(pipeline[i].argv[0])) continue;
+        char* path = resolving(pipeline[i].argv[0], &stripped[i]);
+        if (!path){
+            printf("cshell: command not found (%s)\n", stripped[i]);
+            return 0;            
+        }
+        strncpy(resolved[i], path, 4999);
+        resolved[i][4999] = '\0';
+    }
+return 1;
+}
+
+static int run_foreground(commands *pipeline, int stage_count, const char *shome){
+    char resolved[100][5000];
+    const char *stripped[100];
+    if(!pre_resolve(pipeline, stage_count, resolved, stripped)) return 0;
+    if(stage_count == 1 && pipeline[0].incount == 0 && pipeline[0].outcount == 0 &&
+       (strcmp(pipeline[0].argv[0], "hop") == 0 || strcmp(pipeline[0].argv[0], "exit") == 0)){
+        run_builtin(pipeline[0].argv, pipeline[0].argcount, shome);
+        return 1;
+    }
+    int in_fd = build_input_tmp(&pipeline[0]);
+    if(in_fd == -2) return 0;
+    out_ctx octx;
+    if(prepare_output(&pipeline[stage_count - 1], &octx) != 0){
+        if(in_fd >= 0) close(in_fd);
+        return 0;
+    }
+    int pipes[100][2];
+    for(int i = 0; i < stage_count - 1; i++) pipe(pipes[i]);
+
+    pid_t pids[100];
+    fg_running = 1;
+    for(int i = 0; i < stage_count; i++){
+        if(pipeline[i].argcount == 0) continue;
+        pids[i] = fork();
+        if(pids[i] == 0){
+            if(i > 0) dup2(pipes[i - 1][0], STDIN_FILENO);
+            else if(in_fd >= 0) dup2(in_fd, STDIN_FILENO);
+
+            if(i < stage_count - 1) dup2(pipes[i][1], STDOUT_FILENO);
+            else if(octx.tmp_fd >= 0) dup2(octx.tmp_fd, STDOUT_FILENO);
+
+            for(int j = 0; j < stage_count - 1; j++){ close(pipes[j][0]); close(pipes[j][1]); }
+            if(in_fd >= 0) close(in_fd);
+            if(octx.tmp_fd >= 0) close(octx.tmp_fd);
+            for(int j = 0; j < octx.real_count; j++) close(octx.real_fds[j]);
+
+            if(is_builtin(pipeline[i].argv[0])){
+                run_builtin(pipeline[i].argv, pipeline[i].argcount, shome);
+                exit(0);
+            } else {
+                execv(resolved[i], pipeline[i].argv);
+                fprintf(stderr, "cshell: exec failed for %s: %s\n",
+                        pipeline[i].argv[0], strerror(errno));
+                exit(127);
+            }
+        }
+    }
+
+    for(int i = 0; i < stage_count - 1; i++){ close(pipes[i][0]); close(pipes[i][1]); }
+    if(in_fd >= 0) close(in_fd);
+    for(int i = 0; i < stage_count; i++){
+        if(pipeline[i].argcount > 0) waitpid(pids[i], NULL, 0);
+    }
+    fg_running = 0;
+    flush_output(&octx);
+    flush_pending_bg_messages();
+    return 1;
+}
+
+static void run_background(commands *pipeline, int stage_count, const char *shome){
+    char resolved[100][5000];
+    const char *stripped[100];
+    if(!pre_resolve(pipeline, stage_count, resolved, stripped)) return;
+    int in_fd = build_input_tmp(&pipeline[0]); 
+    if(in_fd == -2) return;
+
+    out_ctx octx;
+    if(prepare_output(&pipeline[stage_count - 1], &octx) != 0){
+        if(in_fd >= 0) close(in_fd);
+        return;
+    }
+
+    int pipes[100][2];
+    for(int i = 0; i < stage_count - 1; i++) pipe(pipes[i]);
+    int gate[2];
+    pipe(gate); 
+    pid_t first_pid = -1;
+    pid_t pids[100];
+
+    for(int i = 0; i < stage_count; i++){
+        if(pipeline[i].argcount == 0) continue;
+        pids[i] = fork();
+        if(pids[i] == 0){
+            if(i == 0){
+                close(gate[1]);
+                char tmp;
+                read(gate[0], &tmp, 1); /* blocks */
+                close(gate[0]);
+                if(in_fd >= 0){
+                    dup2(in_fd, STDIN_FILENO);
+                } else {
+                    int devnull = open("/dev/null", O_RDONLY);
+                    if(devnull >= 0){ dup2(devnull, STDIN_FILENO); close(devnull); } 
+                }
+            } else {
+                dup2(pipes[i - 1][0], STDIN_FILENO);
+            }
+
+            if(i < stage_count - 1) dup2(pipes[i][1], STDOUT_FILENO);
+            else if(octx.tmp_fd >= 0) dup2(octx.tmp_fd, STDOUT_FILENO);
+
+            close(gate[0]); close(gate[1]);
+            for(int j = 0; j < stage_count - 1; j++){ close(pipes[j][0]); close(pipes[j][1]); }
+            if(in_fd >= 0) close(in_fd);
+            if(octx.tmp_fd >= 0) close(octx.tmp_fd);
+            for(int j = 0; j < octx.real_count; j++) close(octx.real_fds[j]);
+
+            if(is_builtin(pipeline[i].argv[0])){
+                run_builtin(pipeline[i].argv, pipeline[i].argcount, shome);
+                exit(0);
+            } else {
+                execv(resolved[i], pipeline[i].argv);
+                exit(127);
+            }
+        }
+        if(i == 0) first_pid = pids[i];
+    }
+    printf("[%d] %d\n", next_job, (int)first_pid);
+    fflush(stdout);
+    register_job(first_pid, pipeline[0].argv[0]); 
+
+    close(gate[0]);
+    write(gate[1], "x", 1); // first child is gonzo
+    close(gate[1]);
+
+    for(int i = 0; i < stage_count - 1; i++){ close(pipes[i][0]); close(pipes[i][1]); }
+    if(in_fd >= 0) close(in_fd);
+    if(octx.tmp_fd >= 0) close(octx.tmp_fd);
+    for(int i = 0; i < octx.real_count; i++) close(octx.real_fds[i]); 
+}
+
+void run_cmd(token *tokens, int tok_count, const char *shome){
+    segment segments[50];
+    int seg_count = 0;
+    int i = 0;  
+        while(i < tok_count){
+        commands pipeline[100];
+        memset(pipeline, 0, sizeof(pipeline));
+        int stage_count = 0;
+        commands *cur = &pipeline[0];
+        int start = i;
+    while(i < tok_count && tokens[i].type != token_semi && tokens[i].type != token_amp){
+            if(tokens[i].type == token_word){
+                cur->argv[cur->argcount++] = tokens[i].value;
+            } else if(tokens[i].type == token_lt && i + 1 < tok_count){
+                cur->in_files[cur->incount++] = tokens[++i].value;
+            } else if(tokens[i].type == token_gt && i + 1 < tok_count){
+                cur->out_files[cur->outcount].file = tokens[++i].value;
+                cur->out_files[cur->outcount++].append = 0;
+            } else if(tokens[i].type == token_gtgt && i + 1 < tok_count){
+                cur->out_files[cur->outcount].file = tokens[++i].value;
+                cur->out_files[cur->outcount++].append = 1;
+            } else if(tokens[i].type == token_pipe){
+                cur->argv[cur->argcount] = NULL;
+                stage_count++;
+                cur = &pipeline[stage_count];
+            }
+            i++;
+        }
+        cur->argv[cur->argcount] = NULL;
+        stage_count++;
+        (void)start;
+
+        memcpy(segments[seg_count].pipeline, pipeline, sizeof(pipeline));
+        segments[seg_count].stage_count = stage_count;
+
+        if(i<tok_count){
+            segments[seg_count].term = (tokens[i].type == token_semi) ? TERM_SEMI : TERM_AMP;
+            i++; // so it skips the ';'
+        } else {
+            segments[seg_count].term = TERM_END;
+        }
+        seg_count++;
+        }
+       for(int s = 0; s < seg_count; s++){
+        commands *pl = segments[s].pipeline;
+        int sc = segments[s].stage_count;
+        if(sc == 0 || pl[0].argcount == 0) continue;
+
+        if(segments[s].term == TERM_AMP){
+            run_background(pl, sc, shome);
+        } else {
+            if(!run_foreground(pl, sc, shome)) break; 
+        }
+    }
+    flush_pending_bg_messages();
+}
