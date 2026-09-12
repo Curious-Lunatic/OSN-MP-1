@@ -4,6 +4,7 @@
 #define maxerinput 5000
 extern char previous[5000];
 int main() {
+    install_sigchild(); 
     char shome[5000];
     char input[maxerinput];
     if (getcwd(shome, sizeof(shome)) == NULL) {
@@ -29,6 +30,7 @@ int main() {
             continue;
         }   
         executing(tokens, token_count, shome);
+        run_cmd(tokens, token_count, shome);
     }
     return 0;
 }
