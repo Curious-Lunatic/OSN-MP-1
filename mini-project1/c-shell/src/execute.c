@@ -352,16 +352,14 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
 }
 
 void run_cmd(token *tokens, int tok_count, const char *shome){
-    segment segments[50];
-    int seg_count = 0;
-    int i = 0;  
-        while(i < tok_count){
+    int i = 0;
+    while(i < tok_count){
         commands pipeline[100];
         memset(pipeline, 0, sizeof(pipeline));
         int stage_count = 0;
         commands *cur = &pipeline[0];
-        int start = i;
-    while(i < tok_count && tokens[i].type != token_semi && tokens[i].type != token_amp){
+
+        while(i < tok_count && tokens[i].type != token_semi && tokens[i].type != token_amp){
             if(tokens[i].type == token_word){
                 cur->argv[cur->argcount++] = tokens[i].value;
             } else if(tokens[i].type == token_lt && i + 1 < tok_count){
@@ -381,28 +379,23 @@ void run_cmd(token *tokens, int tok_count, const char *shome){
         }
         cur->argv[cur->argcount] = NULL;
         stage_count++;
-        (void)start;
 
-        memcpy(segments[seg_count].pipeline, pipeline, sizeof(pipeline));
-        segments[seg_count].stage_count = stage_count;
-
-        if(i<tok_count){
-            segments[seg_count].term = (tokens[i].type == token_semi) ? TERM_SEMI : TERM_AMP;
-            i++; // so it skips the ';'
+        terminator term;
+        if(i < tok_count){
+            term = (tokens[i].type == token_semi) ? TERM_SEMI : TERM_AMP;
+            i++; /* skip the ; or & */
         } else {
-            segments[seg_count].term = TERM_END;
+            term = TERM_END;
         }
-        seg_count++;
-        }
-       for(int s = 0; s < seg_count; s++){
-        commands *pl = segments[s].pipeline;
-        int sc = segments[s].stage_count;
-        if(sc == 0 || pl[0].argcount == 0) continue;
 
-        if(segments[s].term == TERM_AMP){
-            run_background(pl, sc, shome);
+        if(stage_count == 0 || pipeline[0].argcount == 0){
+            continue; /* e.g. a stray ";;" with nothing between - nothing to run */
+        }
+
+        if(term == TERM_AMP){
+            run_background(pipeline, stage_count, shome);
         } else {
-            if(!run_foreground(pl, sc, shome)) break; 
+            if(!run_foreground(pipeline, stage_count, shome)) break; /* D1 rule 3 */
         }
     }
     flush_pending_bg_msg();
