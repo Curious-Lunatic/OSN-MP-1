@@ -2,7 +2,7 @@
 #include "../include/lexer.h"
 jobb jobs[maxjobs];
 int job_count;
-int next_job;
+int next_job=1;
 volatile sig_atomic_t fg_running = 0;
 #define max_pending 64
 static char pending_msg[max_pending][320];
@@ -71,7 +71,7 @@ int register_job(pid_t pid, const char* cmdname){
         jobs[job_count].job_number = num;
         jobs[job_count].pid = pid;
         strncpy(jobs[job_count].command, cmdname, sizeof(jobs[job_count].command)-1);
-        jobs[job_count].command[sizeof(jobs[job_count].command)-1] = "\0";
+        jobs[job_count].command[sizeof(jobs[job_count].command)-1] = '\0';
         jobs[job_count].active = 1;
         job_count++;
     }

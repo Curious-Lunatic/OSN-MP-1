@@ -223,7 +223,7 @@ return 1;
 static int run_foreground(commands *pipeline, int stage_count, const char *shome){
     char resolved[100][5000];
     const char *stripped[100];
-    if(!pre_resolve(pipeline, stage_count, resolved, stripped)) return 0;
+    if(!presolve(pipeline, stage_count, resolved, stripped)) return 0;
     if(stage_count == 1 && pipeline[0].incount == 0 && pipeline[0].outcount == 0 &&
        (strcmp(pipeline[0].argv[0], "hop") == 0 || strcmp(pipeline[0].argv[0], "exit") == 0)){
         run_builtin(pipeline[0].argv, pipeline[0].argcount, shome);
@@ -275,14 +275,14 @@ static int run_foreground(commands *pipeline, int stage_count, const char *shome
     }
     fg_running = 0;
     flush_output(&octx);
-    flush_pending_bg_messages();
+    flush_pending_bg_msg();
     return 1;
 }
 
 static void run_background(commands *pipeline, int stage_count, const char *shome){
     char resolved[100][5000];
     const char *stripped[100];
-    if(!pre_resolve(pipeline, stage_count, resolved, stripped)) return;
+    if(!presolve(pipeline, stage_count, resolved, stripped)) return;
     int in_fd = build_input_tmp(&pipeline[0]); 
     if(in_fd == -2) return;
 
@@ -405,5 +405,5 @@ void run_cmd(token *tokens, int tok_count, const char *shome){
             if(!run_foreground(pl, sc, shome)) break; 
         }
     }
-    flush_pending_bg_messages();
+    flush_pending_bg_msg();
 }

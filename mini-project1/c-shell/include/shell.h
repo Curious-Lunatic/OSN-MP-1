@@ -49,5 +49,6 @@ extern int job_count;
 extern int next_job;
 extern volatile sig_atomic_t fg_running;
 void install_sigchild (void);
-void flush_pending_bg_msg(void);
+void flush_pending_bg_msg(void);\
+int register_job(pid_t pid, const char *cmdname);
 #endif

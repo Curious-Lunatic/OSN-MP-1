@@ -29,7 +29,6 @@ int main() {
         if (!parsing(tokens, token_count)) {
             continue;
         }   
-        executing(tokens, token_count, shome);
         run_cmd(tokens, token_count, shome);
     }
     return 0;
