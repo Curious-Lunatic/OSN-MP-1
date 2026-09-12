@@ -6,6 +6,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<unistd.h>
+#include<errno.h>
 #include<sys/socket.h>
 #include<sys/select.h>
 #include<sys/types.h>
@@ -14,9 +15,11 @@
 #include<sys/wait.h>
 #include<sys/select.h>
 #include<sys/stat.h>
+#include<signal.h>
 #include<time.h>
 #include<pwd.h>
 #define maxinput 1024 // given 
+#define maxjobs 256
 void printing(const char* shome);
 void printing(const char *shome);
 int hopping(char **args, int acount, const char *shome);
@@ -35,4 +38,16 @@ typedef struct{
     int outcount;
 } commands;
 char* resolving(const char *name, const char **stripped);
+typedef struct{
+    int job_number;
+    pid_t pid;
+    char command[256];
+    int active;
+} jobb;
+extern jobb jobs[maxjobs];
+extern int job_count;
+extern int next_job;
+extern volatile sig_atomic_t fg_running;
+void install_sigchild (void);
+void flush_pending_bg_msg(void);
 #endif

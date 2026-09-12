@@ -20,4 +20,5 @@ typedef struct token
 int maketoken(char *input, token *token, int *tok_count);
 int parsing(token *tokens, int count);
 void executing(token *tokens, int tok_count, const char* shome);
+void run_cmd(token *tokens, int tok_count, const char *shome);
 #endif
