@@ -20,6 +20,7 @@
 #include<pwd.h>
 #define maxinput 1024 // given 
 #define maxjobs 256
+#define maxjob_process 16
 void printing(const char* shome);
 void printing(const char *shome);
 int hopping(char **args, int acount, const char *shome);
@@ -38,17 +39,31 @@ typedef struct{
     int outcount;
 } commands;
 char* resolving(const char *name, const char **stripped);
+typedef enum{ job_running, job_stopped } jobstate;
 typedef struct{
     int job_number;
-    pid_t pid;
-    char command[256];
+    pid_t pgid;
+    pid_t pids[maxjob_process];
+    char names[maxjob_process][256];
+    int nproc;
+    char command[512];
+    jobstate state;
+    int background;
     int active;
 } jobb;
 extern jobb jobs[maxjobs];
 extern int job_count;
 extern int next_job;
 extern volatile sig_atomic_t fg_running;
+extern pid_t shell_pgid;
 void install_sigchild (void);
-void flush_pending_bg_msg(void);\
-int register_job(pid_t pid, const char *cmdname);
+void flush_pending_bg_msg(void);
+int register_job(pid_t pgid, pid_t *pids, char **names, int nproc, const char *command, int background);
+jobb* find_job_by_number(int num);
+jobb* find_job_containing_pid(pid_t pid);
+void reap_finished(void);
+void send_sighup_to_all_jobs(void);
+void activities(void);
+void resuming(char **args, int acount);
+void pinging(char **args, int acount);
 #endif

@@ -27,19 +27,7 @@ static void sigchld_handler(int sig){
     int saved_errno = errno;
     int status;
     pid_t pid;
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0){
-        for(int i = 0; i < job_count; i++){
-            if(jobs[i].active && jobs[i].pid == pid){
-                if(WIFEXITED(status)){
-                    queue_or_print(jobs[i].command, pid, 1);
-                } else if(WIFSIGNALED(status)){
-                    queue_or_print(jobs[i].command, pid, 0);
-                }
-                jobs[i].active = 0;
-                break;
-            }
-        }
-    }
+    reap_finished();
     errno = saved_errno;
 }
 
@@ -65,15 +53,73 @@ void flush_pending_bg_msg(void){
     }
 }
 
-int register_job(pid_t pid, const char* cmdname){
+jobb jobs[maxjobs];
+int job_count = 0;
+int next_job = 1;
+pid_t shell_pgid;
+
+int register_job(pid_t pgid, pid_t *pids, char **names, int nproc, const char *command, int background){
     int num = next_job++;
-    if(job_count<maxjobs){
-        jobs[job_count].job_number = num;
-        jobs[job_count].pid = pid;
-        strncpy(jobs[job_count].command, cmdname, sizeof(jobs[job_count].command)-1);
-        jobs[job_count].command[sizeof(jobs[job_count].command)-1] = '\0';
-        jobs[job_count].active = 1;
-        job_count++;
+    jobb *j = &jobs[job_count++];
+    j->job_number = num;
+    j->pgid = pgid;
+    j->nproc = nproc;
+    for(int i = 0; i < nproc; i++){
+        j->pids[i] = pids[i];
+        strncpy(j->names[i], names[i], 255);
+        j->names[i][255] = '\0';
     }
-return num;
+    strncpy(j->command, command, 511);
+    j->command[511] = '\0';
+    j->state = job_running;
+    j->background = background;
+    j->active = 1;
+    return num;
+}
+
+jobb* find_job_by_number(int num){
+    for(int i = 0; i < job_count; i++)
+        if(jobs[i].active && jobs[i].job_number == num) return &jobs[i];
+    return NULL;
+}
+
+jobb* find_job_containing_pid(pid_t pid){
+    for(int i = 0; i < job_count; i++)
+        if(jobs[i].active)
+            for(int p = 0; p < jobs[i].nproc; p++)
+                if(jobs[i].pids[p] == pid) return &jobs[i];
+    return NULL;
+}
+
+static void remove_pid_from_job(pid_t pid){
+    jobb *j = find_job_containing_pid(pid);
+    if(!j) return;
+    for(int i = 0; i < j->nproc; i++){
+        if(j->pids[i] == pid){
+            j->pids[i] = j->pids[j->nproc - 1];
+            strcpy(j->names[i], j->names[j->nproc - 1]);
+            j->nproc--;
+            break;
+        }
+    }
+    if(j->nproc == 0) j->active = 0;
+}
+
+void reap_finished(void){
+    int status;
+    pid_t pid;
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0){
+        if(WIFEXITED(status) || WIFSIGNALED(status)){
+            jobb *j = find_job_containing_pid(pid);
+            if(j){
+                if(j->background) queue_or_print(j->names[0], pid, WIFEXITED(status));
+                remove_pid_from_job(pid);
+            }
+        }
+    }
+}
+
+void send_sighup_to_all_jobs(void){
+    for(int i = 0; i < job_count; i++)
+        if(jobs[i].active) kill(-jobs[i].pgid, SIGHUP);
 }

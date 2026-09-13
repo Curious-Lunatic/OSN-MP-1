@@ -78,7 +78,7 @@ int is_builtin(const char *cmd){
     if(!cmd) return 0;
     return (strcmp(cmd, "hop") == 0 || strcmp(cmd, "reveal") == 0 ||
             strcmp(cmd, "peek") == 0 || strcmp(cmd, "locate") == 0 ||
-            strcmp(cmd, "exit") == 0);
+            strcmp(cmd, "exit") == 0) || strcmp(cmd, "activities") == 0;
 }
 
 void run_builtin(char **args, int acount, const char *shome){
@@ -87,6 +87,7 @@ void run_builtin(char **args, int acount, const char *shome){
     else if(strcmp(args[0], "peek") == 0) peeking(args + 1, acount - 1);
     else if(strcmp(args[0], "locate") == 0) locating(args + 1, acount - 1);
     else if(strcmp(args[0], "exit") == 0) exit(0);
+    else if (strcmp(args[0], "activities") == 0) activities();
 }
 
 void executing(token *tokens, int tok_count, const char *shome){
@@ -241,10 +242,15 @@ static int run_foreground(commands *pipeline, int stage_count, const char *shome
 
     pid_t pids[100];
     fg_running = 1;
+    pid_t group_pgid = 0;
     for(int i = 0; i < stage_count; i++){
         if(pipeline[i].argcount == 0) continue;
         pids[i] = fork();
         if(pids[i] == 0){
+        setpgid(0, group_pgid);
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTSTP, SIG_DFL);
+        signal(SIGTTOU, SIG_DFL);
             if(i > 0) dup2(pipes[i - 1][0], STDIN_FILENO);
             else if(in_fd >= 0) dup2(in_fd, STDIN_FILENO);
 
@@ -266,6 +272,8 @@ static int run_foreground(commands *pipeline, int stage_count, const char *shome
                 exit(127);
             }
         }
+    setpgid(pids[i], group_pgid);
+    if(i == 0) group_pgid = pids[i];
     }
 
     for(int i = 0; i < stage_count - 1; i++){ close(pipes[i][0]); close(pipes[i][1]); }
@@ -298,12 +306,16 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
     pipe(gate); 
     pid_t first_pid = -1;
     pid_t pids[100];
-
+    pid_t group_pgid = 0;
     for(int i = 0; i < stage_count; i++){
         if(pipeline[i].argcount == 0) continue;
         pids[i] = fork();
         if(pids[i] == 0){
             if(i == 0){
+        setpgid(0, group_pgid);
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTSTP, SIG_DFL);
+        signal(SIGTTOU, SIG_DFL);
                 close(gate[1]);
                 char tmp;
                 read(gate[0], &tmp, 1); /* blocks */
@@ -317,7 +329,8 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
             } else {
                 dup2(pipes[i - 1][0], STDIN_FILENO);
             }
-
+            setpgid(pids[i], group_pgid);
+            if (i==0) group_pgid = pids[i];
             if(i < stage_count - 1) dup2(pipes[i][1], STDOUT_FILENO);
             else if(octx.tmp_fd >= 0) dup2(octx.tmp_fd, STDOUT_FILENO);
 
@@ -383,19 +396,17 @@ void run_cmd(token *tokens, int tok_count, const char *shome){
         terminator term;
         if(i < tok_count){
             term = (tokens[i].type == token_semi) ? TERM_SEMI : TERM_AMP;
-            i++; /* skip the ; or & */
+            i++; // skips ;
         } else {
             term = TERM_END;
         }
-
         if(stage_count == 0 || pipeline[0].argcount == 0){
-            continue; /* e.g. a stray ";;" with nothing between - nothing to run */
+            continue; // handles strays
         }
-
         if(term == TERM_AMP){
             run_background(pipeline, stage_count, shome);
         } else {
-            if(!run_foreground(pipeline, stage_count, shome)) break; /* D1 rule 3 */
+            if(!run_foreground(pipeline, stage_count, shome)) break; 
         }
     }
     flush_pending_bg_msg();
