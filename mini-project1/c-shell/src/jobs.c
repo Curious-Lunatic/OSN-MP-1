@@ -1,8 +1,5 @@
 #include "../include/shell.h"
 #include "../include/lexer.h"
-jobb jobs[maxjobs];
-int job_count;
-int next_job=1;
 volatile sig_atomic_t fg_running = 0;
 #define max_pending 64
 static char pending_msg[max_pending][320];
@@ -25,8 +22,6 @@ static void queue_or_print(const char *cmdname, pid_t pid, int normal){
 static void sigchld_handler(int sig){
     (void)sig;
     int saved_errno = errno;
-    int status;
-    pid_t pid;
     reap_finished();
     errno = saved_errno;
 }

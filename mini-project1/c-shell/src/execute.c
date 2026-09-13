@@ -291,31 +291,29 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
     char resolved[100][5000];
     const char *stripped[100];
     if(!presolve(pipeline, stage_count, resolved, stripped)) return;
-    int in_fd = build_input_tmp(&pipeline[0]); 
+    int in_fd = build_input_tmp(&pipeline[0]);
     if(in_fd == -2) return;
-
     out_ctx octx;
     if(prepare_output(&pipeline[stage_count - 1], &octx) != 0){
         if(in_fd >= 0) close(in_fd);
         return;
     }
-
     int pipes[100][2];
     for(int i = 0; i < stage_count - 1; i++) pipe(pipes[i]);
     int gate[2];
-    pipe(gate); 
-    pid_t first_pid = -1;
+    pipe(gate);
     pid_t pids[100];
     pid_t group_pgid = 0;
     for(int i = 0; i < stage_count; i++){
         if(pipeline[i].argcount == 0) continue;
         pids[i] = fork();
         if(pids[i] == 0){
+            setpgid(0, group_pgid);
+            signal(SIGINT, SIG_DFL);
+            signal(SIGTSTP, SIG_DFL);
+            signal(SIGTTOU, SIG_DFL);
+
             if(i == 0){
-        setpgid(0, group_pgid);
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTSTP, SIG_DFL);
-        signal(SIGTTOU, SIG_DFL);
                 close(gate[1]);
                 char tmp;
                 read(gate[0], &tmp, 1); /* blocks */
@@ -324,13 +322,12 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
                     dup2(in_fd, STDIN_FILENO);
                 } else {
                     int devnull = open("/dev/null", O_RDONLY);
-                    if(devnull >= 0){ dup2(devnull, STDIN_FILENO); close(devnull); } 
+                    if(devnull >= 0){ dup2(devnull, STDIN_FILENO); close(devnull); }
                 }
             } else {
                 dup2(pipes[i - 1][0], STDIN_FILENO);
             }
-            setpgid(pids[i], group_pgid);
-            if (i==0) group_pgid = pids[i];
+
             if(i < stage_count - 1) dup2(pipes[i][1], STDOUT_FILENO);
             else if(octx.tmp_fd >= 0) dup2(octx.tmp_fd, STDOUT_FILENO);
 
@@ -348,20 +345,33 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
                 exit(127);
             }
         }
-        if(i == 0) first_pid = pids[i];
+        setpgid(pids[i], group_pgid);
+        if(i == 0) group_pgid = pids[i];
     }
-    printf("[%d] %d\n", next_job, (int)first_pid);
+
+    char *names[100];
+    for(int i = 0; i < stage_count; i++) names[i] = pipeline[i].argv[0];
+
+    char command[512] = "";
+    for(int i = 0; i < stage_count; i++){
+        if(i > 0) strncat(command, " | ", sizeof(command) - strlen(command) - 1);
+        for(int a = 0; a < pipeline[i].argcount; a++){
+            if(a > 0) strncat(command, " ", sizeof(command) - strlen(command) - 1);
+            strncat(command, pipeline[i].argv[a], sizeof(command) - strlen(command) - 1);
+        }
+    }
+
+    int job_num = register_job(group_pgid, pids, names, stage_count, command, 1);
+    printf("[%d] %d\n", job_num, (int)group_pgid);
     fflush(stdout);
-    register_job(first_pid, pipeline[0].argv[0]); 
 
     close(gate[0]);
-    write(gate[1], "x", 1); // first child is gonzo
+    write(gate[1], "x", 1);
     close(gate[1]);
-
     for(int i = 0; i < stage_count - 1; i++){ close(pipes[i][0]); close(pipes[i][1]); }
     if(in_fd >= 0) close(in_fd);
     if(octx.tmp_fd >= 0) close(octx.tmp_fd);
-    for(int i = 0; i < octx.real_count; i++) close(octx.real_fds[i]); 
+    for(int i = 0; i < octx.real_count; i++) close(octx.real_fds[i]);
 }
 
 void run_cmd(token *tokens, int tok_count, const char *shome){
