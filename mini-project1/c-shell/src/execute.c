@@ -78,7 +78,8 @@ int is_builtin(const char *cmd){
     if(!cmd) return 0;
     return (strcmp(cmd, "hop") == 0 || strcmp(cmd, "reveal") == 0 ||
             strcmp(cmd, "peek") == 0 || strcmp(cmd, "locate") == 0 ||
-            strcmp(cmd, "exit") == 0) || strcmp(cmd, "activities") == 0;
+            strcmp(cmd, "exit") == 0) || strcmp(cmd, "activities") == 0 || 
+            strcmp(cmd, "resume") == 0 || stcmp(cmd, "ping") == 0;
 }
 
 void run_builtin(char **args, int acount, const char *shome){
@@ -88,6 +89,8 @@ void run_builtin(char **args, int acount, const char *shome){
     else if(strcmp(args[0], "locate") == 0) locating(args + 1, acount - 1);
     else if(strcmp(args[0], "exit") == 0) exit(0);
     else if (strcmp(args[0], "activities") == 0) activities();
+    else if(strcmp(args[0], "resume") == 0) resuming(args+1, acount-1);
+    else if(strcmp(args[0],"ping")) pinging(args, acount);
 }
 
 void executing(token *tokens, int tok_count, const char *shome){
@@ -451,4 +454,132 @@ void run_cmd(token *tokens, int tok_count, const char *shome){
         }
     }
     flush_pending_bg_msg();
+}
+
+static volatile sig_atomic_t resume_timed_out = 0;
+static void alarm_handler(int sig){ (void)sig; resume_timed_out = 1; }
+
+void resuming(char **args, int acount){
+        if(acount < 2 || args[0][0] != '%'){
+        printf("resume: invalid syntax\n");
+        return;
+    }
+    char *endptr;
+    long jn = strtol(args[0] + 1, &endptr, 10);
+    if(*endptr != '\0'){
+        printf("resume: invalid syntax\n");
+        return;
+    }
+    jobb *j = find_job_by_number((int)jn);
+    if(!j){
+        printf("resume: no such job\n");
+        return;
+    }
+
+    int is_fg = strcmp(args[1], "fg") == 0;
+    int is_bg = strcmp(args[1], "bg") == 0;
+    if(!is_fg && !is_bg){
+        printf("resume: invalid syntax\n");
+        return;
+    }
+
+    int timeout = 0;
+    if(is_fg && acount >= 4 && strcmp(args[2], "--timeout") == 0){
+        char *e2;
+        timeout = (int)strtol(args[3], &e2, 10);
+        if(*e2 != '\0' || timeout <= 0){
+            printf("resume: invalid syntax\n");
+            return;
+        }
+    } else if(is_bg && acount > 2){
+        printf("resume: invalid syntax\n");
+        return;
+    } else if(is_fg && acount > 2 && strcmp(args[2], "--timeout") != 0){
+        printf("resume: invalid syntax\n");
+        return;
+    }
+    kill(-j->pgid, SIGCONT);
+    if(is_bg){
+        j->state = job_running;
+        printf("[%d] + Running\t%s\n", j->job_number, j->command);
+        return;
+    }
+    printf("%s\n", j->command);
+    tcsetpgrp(STDIN_FILENO, j->pgid);
+    j->state = job_running;
+
+    resume_timed_out = 0;
+    if(timeout > 0){
+        struct sigaction sa = {0};
+        sa.sa_handler = alarm_handler;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGALRM, &sa, NULL);
+        alarm(timeout);
+    }
+
+    int remaining = j->nproc;
+    while(remaining > 0 && !resume_timed_out){
+        int status;
+        pid_t w = waitpid(-j->pgid, &status, WUNTRACED);
+        if(w < 0){
+            if(errno == EINTR) continue;
+            break;
+        }
+        if(WIFSTOPPED(status)){
+            j->state = job_stopped;
+            break;
+        } else if(WIFEXITED(status) || WIFSIGNALED(status)){
+            remaining--;
+        }
+    }
+
+    if(timeout > 0){
+        if(resume_timed_out){
+            kill(-j->pgid, SIGTERM);
+            printf("resume: job timed out\n");
+            j->active = 0;
+        } else {
+            alarm(0);
+        }
+    } else if(remaining == 0){
+        j->active = 0;
+    }
+    tcsetpgrp(STDIN_FILENO, shell_pgid);
+}
+
+void pinging(char **args, int acount){
+    if (acount != 2){
+        printf("ping: invalid syntax\n");
+        return;
+    }
+    char *e;
+    long sig_num = strtol(args[1], &e, 10);
+    if(*e != '\0' || sig_num < 0){
+        printf("ping: invalid syntax\n");
+        return;
+    }
+    int real_sig = (int)(sig_num % 64);
+    const char *target = args[0];
+    if(target[0]=='%'){
+        long jn = strtol(target + 1, &e, 10);
+        if(*e != '\0'){
+            printf("ping: no such process found\n");
+            return;
+        }
+        jobb *j = find_job_by_number((int)jn);
+        if(!j){
+            printf("ping: no such process found\n");
+            return;
+        }
+        kill(-j->pgid, real_sig);
+    }
+    else{
+        long pid = strtol(target, &e, 10);
+        if(*e != '\0' || !find_job_containing_pid((pid_t)pid)){
+            printf("ping: no such process found\n");
+            return;
+        }
+        kill((pid_t)pid, real_sig);
+    }
+    printf("Sent signal %s to %s\n", args[1], target);
 }
