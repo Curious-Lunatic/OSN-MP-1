@@ -221,6 +221,17 @@ static int presolve(commands *pipeline, int stage_count, char resolved[][5000], 
 return 1;
 }
 
+static void build_command_string(commands *pipeline, int stage_count, char *out, size_t outsize){
+    out[0] = '\0';
+    for(int i = 0; i < stage_count; i++){
+        if(i > 0) strncat(out, " | ", outsize - strlen(out) - 1);
+        for(int a = 0; a < pipeline[i].argcount; a++){
+            if(a > 0) strncat(out, " ", outsize - strlen(out) - 1);
+            strncat(out, pipeline[i].argv[a], outsize - strlen(out) - 1);
+        }
+    }
+}
+
 static int run_foreground(commands *pipeline, int stage_count, const char *shome){
     char resolved[100][5000];
     const char *stripped[100];
@@ -239,18 +250,19 @@ static int run_foreground(commands *pipeline, int stage_count, const char *shome
     }
     int pipes[100][2];
     for(int i = 0; i < stage_count - 1; i++) pipe(pipes[i]);
-
     pid_t pids[100];
-    fg_running = 1;
     pid_t group_pgid = 0;
+    fg_running = 1;
+
     for(int i = 0; i < stage_count; i++){
         if(pipeline[i].argcount == 0) continue;
         pids[i] = fork();
         if(pids[i] == 0){
-        setpgid(0, group_pgid);
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTSTP, SIG_DFL);
-        signal(SIGTTOU, SIG_DFL);
+            setpgid(0, group_pgid);
+            signal(SIGINT, SIG_DFL);
+            signal(SIGTSTP, SIG_DFL);
+            signal(SIGTTOU, SIG_DFL);
+
             if(i > 0) dup2(pipes[i - 1][0], STDIN_FILENO);
             else if(in_fd >= 0) dup2(in_fd, STDIN_FILENO);
 
@@ -272,21 +284,49 @@ static int run_foreground(commands *pipeline, int stage_count, const char *shome
                 exit(127);
             }
         }
-    setpgid(pids[i], group_pgid);
-    if(i == 0) group_pgid = pids[i];
+        setpgid(pids[i], group_pgid);
+        if(i == 0) group_pgid = pids[i];
     }
 
     for(int i = 0; i < stage_count - 1; i++){ close(pipes[i][0]); close(pipes[i][1]); }
     if(in_fd >= 0) close(in_fd);
-    for(int i = 0; i < stage_count; i++){
-        if(pipeline[i].argcount > 0) waitpid(pids[i], NULL, 0);
+
+    // register the job before waiting, so it can be found or marked mid-wait 
+    char *names[100];
+    for(int i = 0; i < stage_count; i++) names[i] = pipeline[i].argv[0];
+    char command[512];
+    build_command_string(pipeline, stage_count, command, sizeof(command));
+    int job_num = register_job(group_pgid, pids, names, stage_count, command, 0);
+    jobb *j = find_job_by_number(job_num);
+
+    tcsetpgrp(STDIN_FILENO, group_pgid);
+
+    int remaining = stage_count;
+    int stopped = 0;
+    while(remaining > 0){
+        int status;
+        pid_t w = waitpid(-group_pgid, &status, WUNTRACED);
+        if(w < 0){
+            if(errno == EINTR) continue;
+            break;
+        }
+        if(WIFSTOPPED(status)){
+            if(j) j->state = job_stopped;
+            printf("[%d] + Stopped\t%s\n", job_num, command);
+            stopped = 1;
+            break;
+        } else if(WIFEXITED(status) || WIFSIGNALED(status)){
+            remaining--;
+        }
     }
+    tcsetpgrp(STDIN_FILENO, shell_pgid);
+    if(!stopped && j) j->active = 0; 
     fg_running = 0;
     flush_output(&octx);
     flush_pending_bg_msg();
     return 1;
 }
-
+   
 static void run_background(commands *pipeline, int stage_count, const char *shome){
     char resolved[100][5000];
     const char *stripped[100];
@@ -304,6 +344,7 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
     pipe(gate);
     pid_t pids[100];
     pid_t group_pgid = 0;
+
     for(int i = 0; i < stage_count; i++){
         if(pipeline[i].argcount == 0) continue;
         pids[i] = fork();
@@ -316,7 +357,7 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
             if(i == 0){
                 close(gate[1]);
                 char tmp;
-                read(gate[0], &tmp, 1); /* blocks */
+                read(gate[0], &tmp, 1);
                 close(gate[0]);
                 if(in_fd >= 0){
                     dup2(in_fd, STDIN_FILENO);
@@ -348,23 +389,13 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
         setpgid(pids[i], group_pgid);
         if(i == 0) group_pgid = pids[i];
     }
-
     char *names[100];
     for(int i = 0; i < stage_count; i++) names[i] = pipeline[i].argv[0];
-
-    char command[512] = "";
-    for(int i = 0; i < stage_count; i++){
-        if(i > 0) strncat(command, " | ", sizeof(command) - strlen(command) - 1);
-        for(int a = 0; a < pipeline[i].argcount; a++){
-            if(a > 0) strncat(command, " ", sizeof(command) - strlen(command) - 1);
-            strncat(command, pipeline[i].argv[a], sizeof(command) - strlen(command) - 1);
-        }
-    }
-
+    char command[512];
+    build_command_string(pipeline, stage_count, command, sizeof(command));
     int job_num = register_job(group_pgid, pids, names, stage_count, command, 1);
     printf("[%d] %d\n", job_num, (int)group_pgid);
     fflush(stdout);
-
     close(gate[0]);
     write(gate[1], "x", 1);
     close(gate[1]);
@@ -406,7 +437,7 @@ void run_cmd(token *tokens, int tok_count, const char *shome){
         terminator term;
         if(i < tok_count){
             term = (tokens[i].type == token_semi) ? TERM_SEMI : TERM_AMP;
-            i++; // skips ;
+            i++; // skips ';'
         } else {
             term = TERM_END;
         }

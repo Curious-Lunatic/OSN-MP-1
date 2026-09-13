@@ -18,6 +18,7 @@
 #include<signal.h>
 #include<time.h>
 #include<pwd.h>
+#include<termios.h>
 #define maxinput 1024 // given 
 #define maxjobs 256
 #define maxjob_process 16
