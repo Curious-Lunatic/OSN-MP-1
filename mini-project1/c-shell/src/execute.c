@@ -244,11 +244,11 @@ static int run_foreground(commands *pipeline, int stage_count, const char *shome
     char resolved[100][5000];
     const char *stripped[100];
     if(!presolve(pipeline, stage_count, resolved, stripped)) return 0;
-    if(stage_count == 1 && pipeline[0].incount == 0 && pipeline[0].outcount == 0 &&
-       (strcmp(pipeline[0].argv[0], "hop") == 0 || strcmp(pipeline[0].argv[0], "exit") == 0)){
-        run_builtin(pipeline[0].argv, pipeline[0].argcount, shome);
-        return 1;
-    }
+if(stage_count == 1 && pipeline[0].incount == 0 && pipeline[0].outcount == 0 &&
+   is_shell_only_builtin(pipeline[0].argv[0])){
+    run_builtin(pipeline[0].argv, pipeline[0].argcount, shome);
+    return 1;
+}
     int in_fd = build_input_tmp(&pipeline[0]);
     if(in_fd == -2) return 0;
     out_ctx octx;
