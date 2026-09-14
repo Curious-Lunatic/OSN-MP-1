@@ -219,18 +219,22 @@ typedef struct{
 } segment;
 
 static int presolve(commands *pipeline, int stage_count, char resolved[][5000], const char* stripped[]){
-    for (int i=0; i<stage_count; i++){
-        if(pipeline[i].argcount == 0 ) continue;
+    int all_ok = 1;
+    for (int i = 0; i < stage_count; i++){
+        resolved[i][0] = '\0';
+        if(pipeline[i].argcount == 0) continue;
         if(is_builtin(pipeline[i].argv[0])) continue;
         char* path = resolving(pipeline[i].argv[0], &stripped[i]);
         if (!path){
             printf("cshell: command not found (%s)\n", stripped[i]);
-            return 0;            
+            all_ok = 0;
+            if(stage_count == 1) return 0;
+        } else {
+            strncpy(resolved[i], path, 4999);
+            resolved[i][4999] = '\0';
         }
-        strncpy(resolved[i], path, 4999);
-        resolved[i][4999] = '\0';
     }
-return 1;
+    return (stage_count > 1) ? 1 : all_ok;
 }
 
 static void build_command_string(commands *pipeline, int stage_count, char *out, size_t outsize){
@@ -289,6 +293,8 @@ if(stage_count == 1 && pipeline[0].incount == 0 && pipeline[0].outcount == 0 &&
             if(is_builtin(pipeline[i].argv[0])){
                 run_builtin(pipeline[i].argv, pipeline[i].argcount, shome);
                 exit(0);
+            } else if(resolved[i][0] == '\0'){
+                exit(127);
             } else {
                 execv(resolved[i], pipeline[i].argv);
                 fprintf(stderr, "cshell: exec failed for %s: %s\n",
@@ -393,6 +399,8 @@ static void run_background(commands *pipeline, int stage_count, const char *shom
             if(is_builtin(pipeline[i].argv[0])){
                 run_builtin(pipeline[i].argv, pipeline[i].argcount, shome);
                 exit(0);
+            } else if(resolved[i][0] == '\0'){
+                exit(127);
             } else {
                 execv(resolved[i], pipeline[i].argv);
                 exit(127);

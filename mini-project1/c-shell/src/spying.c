@@ -49,6 +49,19 @@ void spying(char **args, int acount){
         return;
     }
 
+     if(kill(pid, 0) == -1 && errno == EPERM){
+        printf("spy: permission denied\n");
+        return;
+    }
+    char fddir[80];
+    snprintf(fddir, sizeof(fddir), "/proc/%d/fd", (int)pid);
+    DIR *test_d = opendir(fddir);
+    if(!test_d && errno == EACCES){
+        printf("spy: permission denied\n");
+        return;
+    }
+    
+    if(test_d) closedir(test_d);
     printf("PID\tFD\tTYPE\tPATH\n");
 
     char link[128], buf[4096];

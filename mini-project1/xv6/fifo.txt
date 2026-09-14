@@ -133,19 +133,19 @@ xv6 kernel is booting
 
 init: starting sh
 $ schedulertest
-schedulertest: spawned 5 children (pids 4 5 6 7 8) start_tick=18
-CHILDSTATS,4,18,120,102
-PROCSTATS,4,schedulertest,18,18,120,102
-CHILDSTATS,5,120,128,8
-PROCSTATS,5,schedulertest,18,120,128,8
-CHILDSTATS,6,128,141,9
-PROCSTATS,6,schedulertest,18,128,141,9
-CHILDSTATS,7,131,168,5
-PROCSTATS,7,schedulertest,18,131,168,4
-CHILDSTATS,8,132,172,10
-PROCSTATS,8,schedulertest,18,132,172,6
-schedulertest: all done, end_tick=172 total_ticks=154
+schedulertest: spawned 5 children (pids 4 5 6 7 8) start_tick=27
+CHILDSTATS,4,27,128,101
+PROCSTATS,4,schedulertest,27,27,128,101
+CHILDSTATS,5,128,137,9
+PROCSTATS,5,schedulertest,27,128,137,9
+CHILDSTATS,6,137,150,9
+PROCSTATS,6,schedulertest,27,137,150,9
+CHILDSTATS,7,140,177,5
+PROCSTATS,7,schedulertest,27,140,177,4
+CHILDSTATS,8,141,181,10
+PROCSTATS,8,schedulertest,27,141,181,6
+schedulertest: all done, end_tick=181 total_ticks=154
 SCHEDTEST_DONE
-PROCSTATS,3,schedulertest,18,18,172,0
+PROCSTATS,3,schedulertest,27,27,181,0
 $ QEMU: Terminated
 

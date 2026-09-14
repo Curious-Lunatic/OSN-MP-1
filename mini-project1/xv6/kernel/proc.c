@@ -30,7 +30,7 @@ extern uint ticks;
 #define NMLFQ        4
 #define BOOST_TICKS  48
 
-static const int mlfq_slice[NMLFQ] = {1, 2, 4, 8};
+static const int mlfq_slice[NMLFQ] = {1, 4, 8, 16};
 static int mlfq_last[NMLFQ];
 
 static void
