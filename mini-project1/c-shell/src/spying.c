@@ -18,12 +18,6 @@ static const char* type_of_path(const char *path){
     return type_from_mode(sb.st_mode);
 }
 
-static const char* type_of_path(const char *path){
-    struct stat sb;
-    if(stat(path, &sb) != 0) return "UNKNOWN";
-    return type_from_mode(sb.st_mode);
-}
-
 static int cmp_fd_names(const void *a, const void *b){
     int na = atoi(*(const char **)a);
     int nb = atoi(*(const char **)b);
