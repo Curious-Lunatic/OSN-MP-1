@@ -1,0 +1,6 @@
+ifndef SCHEDULER
+SCHEDULER := RR
+endif
+ifeq ($(SCHEDULER), MLFQ)
+CFLAGS += -DMLFQ
+endi
