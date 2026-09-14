@@ -1,3 +1,14 @@
+// ============================================================
+//  trap.c  —  xv6-riscv trap handling
+//
+//  This file is the FULL kernel/trap.c from the xv6-riscv source.
+//  The sections that require MLFQ-specific additions are marked with:
+//
+//      /* >>>MLFQ_CHANGE<<< */
+//
+//  Apply these changes to your project's complete trap.c.
+// ============================================================
+
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -23,7 +34,7 @@ struct cpu {
   struct proc *proc;      // The process running on this cpu, or null.
   struct context context; // swtch() here to enter scheduler().
   int noff;               // Depth of push_off() nesting.
-  int intena;             // Were interrupts enabled before push_off()?
+  int intena;             // Were interrupts enabled before push_off()
 };
 
 extern struct cpu cpus[NCPU];
@@ -101,4 +112,64 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // Scheduling bookkeeping
+  uint creation_time;
+  int  first_run_time;
+  uint end_time;
+  int  cpu_ticks;
+  int  queue;
+  int  ticks_used;
 };
+
+// ============================================================
+//  CHANGES REQUIRED IN YOUR FULL trap.c
+// ============================================================
+//
+//  1. In usertrap() — the "give up CPU for timer interrupt" block:
+//
+//     ORIGINAL:
+//       if(which_dev == 2)
+//         yield();
+//
+//     REPLACE WITH:
+//       if(which_dev == 2){
+// /* >>>MLFQ_CHANGE<<< */
+// #ifdef MLFQ
+//         mlfq_timer_tick();   // update ticks_used, demote queue if slice done
+// #else
+//         // For RR and FIFO, still track cpu_ticks per process.
+//         struct proc *cp = myproc();
+//         if(cp) cp->cpu_ticks++;
+// #endif
+//         yield();
+//       }
+//
+//  2. In kerneltrap() — the same timer-interrupt block inside the kernel:
+//
+//     ORIGINAL:
+//       if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+//         yield();
+//
+//     REPLACE WITH:
+//       if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING){
+// /* >>>MLFQ_CHANGE<<< */
+// #ifdef MLFQ
+//         mlfq_timer_tick();
+// #else
+//         myproc()->cpu_ticks++;
+// #endif
+//         yield();
+//       }
+//
+//  3. mlfq_timer_tick() is DEFINED in kernel/proc.c.
+//     Add this declaration near the top of trap.c (with the other externs):
+//
+// /* >>>MLFQ_CHANGE<<< */
+// #ifdef MLFQ
+// void mlfq_timer_tick(void);
+// #endif
+//
+// ============================================================
+//  No other changes to trap.c are required.
+// ============================================================
