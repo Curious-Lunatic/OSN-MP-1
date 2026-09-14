@@ -1,5 +1,4 @@
 #ifndef __ASSEMBLER__
-
 // which hart (core) is this?
 static inline uint64
 r_mhartid()
@@ -8,9 +7,7 @@ r_mhartid()
   asm volatile("csrr %0, mhartid" : "=r"(x));
   return x;
 }
-
 // Machine Status Register, mstatus
-
 #define MSTATUS_MPP_MASK (3L << 11) // previous mode.
 #define MSTATUS_MPP_M    (3L << 11)
 #define MSTATUS_MPP_S    (1L << 11)

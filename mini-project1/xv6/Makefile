@@ -80,6 +80,19 @@ CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
+
+ifndef SCHEDULER
+SCHEDULER := RR
+endif
+ifeq ($(SCHEDULER), MLFQ)
+CFLAGS += -DMLFQ
+else ifeq ($(SCHEDULER), FIFO)
+CFLAGS += -DFIFO
+endif
+ifdef MLFQ_DEBUG
+CFLAGS += -DMLFQ_DEBUG
+endif
+
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie
@@ -171,7 +184,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 3
+CPUS := 1
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
@@ -202,15 +215,3 @@ check-qemu-version:
 .PHONY: fmt
 fmt:
 	clang-format -i $(wildcard kernel/*.[ch] user/*.[ch] mkfs/*.c)
-
-ifndef SCHEDULER
-SCHEDULER := RR
-endif
-ifeq ($(SCHEDULER), MLFQ)
-CFLAGS += -DMLFQ
-else ifeq ($(SCHEDULER), FIFO)
-CFLAGS += -DFIFO
-endif
-ifdef MLFQ_DEBUG
-CFLAGS += -DMLFQ_DEBUG
-endif
