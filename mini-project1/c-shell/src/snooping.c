@@ -64,12 +64,14 @@ static const char* syscall_name(long num){
         case 217: return "getdents64";
         case 218: return "set_tid_address";
         case 228: return "clock_gettime";
+        case 230: return "clock_nanosleep"; // better than nanosleep
         case 231: return "exit_group";
         case 257: return "openat";
         case 262: return "newfstatat";
         case 273: return "set_robust_list";
         case 302: return "prlimit64";
         case 318: return "getrandom";
+        case 334: return "rseq";
         default: return NULL;
     }
 }

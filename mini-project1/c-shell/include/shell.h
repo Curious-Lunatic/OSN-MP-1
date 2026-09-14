@@ -69,4 +69,6 @@ void send_sighup_to_all_jobs(void);
 void activities(void);
 void resuming(char **args, int acount);
 void pinging(char **args, int acount);
+void spying(char **args, int acount);
+void snooping(char **args, int acount);
 #endif

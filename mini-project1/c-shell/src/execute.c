@@ -77,7 +77,8 @@ static void flush_output(out_ctx *ctx){
 static int is_shell_only_builtin(const char *cmd){
     return strcmp(cmd, "hop") == 0 || strcmp(cmd, "exit") == 0 ||
            strcmp(cmd, "activities") == 0 || strcmp(cmd, "resume") == 0 ||
-           strcmp(cmd, "ping") == 0;
+           strcmp(cmd, "ping") == 0 || strcmp(cmd, "spy") == 0 ||
+           strcmp(cmd, "snoop") == 0;
 }
 
 int is_builtin(const char *cmd){
@@ -85,7 +86,8 @@ int is_builtin(const char *cmd){
     return (strcmp(cmd, "hop") == 0 || strcmp(cmd, "reveal") == 0 ||
             strcmp(cmd, "peek") == 0 || strcmp(cmd, "locate") == 0 ||
             strcmp(cmd, "exit") == 0 || strcmp(cmd, "activities") == 0 ||
-            strcmp(cmd, "resume") == 0 || strcmp(cmd, "ping") == 0);
+            strcmp(cmd, "resume") == 0 || strcmp(cmd, "ping") == 0 ||
+            strcmp(cmd, "spy") == 0 || strcmp(cmd, "snoop") == 0);
 }
 
 void run_builtin(char **args, int acount, const char *shome){
@@ -97,6 +99,8 @@ void run_builtin(char **args, int acount, const char *shome){
     else if(strcmp(args[0], "activities") == 0) activities();
     else if(strcmp(args[0], "resume") == 0) resuming(args + 1, acount - 1);
     else if(strcmp(args[0], "ping") == 0) pinging(args + 1, acount - 1);
+    else if(strcmp(args[0], "spy") == 0) spying(args + 1, acount - 1);
+    else if(strcmp(args[0], "snoop") == 0) snooping(args + 1, acount - 1);
 }
 
 void executing(token *tokens, int tok_count, const char *shome){
