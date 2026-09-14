@@ -34,7 +34,7 @@ mini-project1/
 │   ├── mkfs/
 │   ├── kernel/
 │   ├── Makefile
-│   └── report.md    # Or report.pdf
+│   └── report.md    
 ├── AI-usage.pdf
 └── README.md
 ```
@@ -231,15 +231,18 @@ python3 compare_schedulers.py rr.txt fifo.txt mlfq.txt
 
 ---
 
-### MLFQ Scheduling Rules
+### MLFQ Scheduling Logic
+* **Queues & Time Slices:**
+1) Queue 0: 1 timer tick (Highest Priority)
+2) Queue 1: 4 timer ticks
+3) Queue 2: 8 timer ticks
+4) Queue 3: 16 timer ticks (Lowest Priority, Round-Robin)
 
-* **4 Queues:**
-  * Queue 0: Highest priority.
-  * Queue 3: Lowest priority (scheduled Round-Robin).
-* **Strict Priority:** The scheduler always executes tasks from the highest non-empty queue.
-* **Preemption:** If a process arrives in a higher-priority queue, the running process is preempted at the next timer tick.
-* **Voluntary Yield:** If a process blocks on I/O, it leaves the queue and returns to the tail of the same queue with its slice reset upon waking.
-* **Anti-Starvation Boost:** Every 48 ticks, all processes are promoted to Queue 0 to prevent starvation of CPU-heavy jobs.
+* **Strict Priority:** The scheduler always runs tasks from the highest non-empty queue.
+
+* **Time Slice Exhaustion:** When a process uses its entire slice, it is demoted to the next lower queue (or placed at the back of Queue 3).
+* **Voluntary Yield:** If a process yields voluntarily (such as waiting for I/O), it retains its priority level and returns to the tail of the same queue with its slice counter reset.
+* **Anti-Starvation Boost:** Every 48 ticks, all processes are promoted back to Queue 0.
 
 ---
 
@@ -250,7 +253,7 @@ The three schedulers were evaluated on an identical workload using `schedulertes
 | Scheduler | Avg Turnaround Time (ticks) | Avg Waiting Time (ticks) | Avg Response Time (ticks) |
 | :--- | :---: | :---: | :---: |
 | **Round-Robin (RR)** | 71.83 | 50.33 | 1.67 |
-| **FIFO** | 132.17 | 110.67 | 73.17 |
+| **FIFO** | 132.00 | 110.50 | 73.00 |
 | **MLFQ** | 69.33 | 47.50 | 1.67 |
 
 #### Observations:
