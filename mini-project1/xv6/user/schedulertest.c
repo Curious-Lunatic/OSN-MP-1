@@ -1,12 +1,11 @@
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
-#define SPIN_COUNT 5000000
-static void
-spin(int iters)
-{
+#define SPIN_COUNT 50000000
+static void spin(int iters) {
   volatile long x = 0;
-  for(int i = 0; i < iters * SPIN_COUNT; i++)
+  long long total_iters = (long long)iters * SPIN_COUNT; 
+  for(long long i = 0; i < total_iters; i++)
     x += i;
   (void)x;
 }
@@ -28,7 +27,7 @@ main(void)
       int sleep_ticks = 0;
       switch(i){
       case 0:
-        spin(12);
+        spin(100);
         break;
       case 1:
         spin(8);

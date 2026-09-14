@@ -42,6 +42,7 @@ mlfq_boost(void)
     if(p->state != UNUSED && p->state != ZOMBIE){
       p->queue      = 0;
       p->ticks_used = 0;
+      printk("MLFQLOG,%d,%d,0\n", ticks, p->pid);
     }
     release(&p->lock);
   }
